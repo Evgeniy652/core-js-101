@@ -20,8 +20,10 @@
  *    console.log(r.height);      // => 20
  *    console.log(r.getArea());   // => 200
  */
-function Rectangle(/* width, height */) {
-  throw new Error('Not implemented');
+function Rectangle(width, height) {
+  this.width = width;
+  this.height = height;
+  this.getArea = () => this.width * this.height;
 }
 
 
@@ -35,8 +37,8 @@ function Rectangle(/* width, height */) {
  *    [1,2,3]   =>  '[1,2,3]'
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
-function getJSON(/* obj */) {
-  throw new Error('Not implemented');
+function getJSON(obj) {
+  return JSON.stringify(obj);
 }
 
 
@@ -51,8 +53,10 @@ function getJSON(/* obj */) {
  *    const r = fromJSON(Circle.prototype, '{"radius":10}');
  *
  */
-function fromJSON(/* proto, json */) {
-  throw new Error('Not implemented');
+function fromJSON(proto, json) {
+  const obj = JSON.parse(json);
+  Object.setPrototypeOf(obj, proto);
+  return obj;
 }
 
 
@@ -110,33 +114,74 @@ function fromJSON(/* proto, json */) {
  *  For more examples see unit tests.
  */
 
+const again = (collect, type) => {
+  if (collect && collect.find((item) => item.type === type)) {
+    throw new Error('Element, id and pseudo-element should not occur more then one time inside the selector');
+  }
+  return false;
+};
+
+const next = (collect, type) => {
+  if (collect && collect.find((item) => item.type === type)) {
+    throw new Error('Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element');
+  }
+  return false;
+};
+
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+
+  element(value) {
+    const item = { type: 'element', value };
+    again(this.collect, 'element');
+    next(this.collect, 'id');
+    const collect = this.collect ? this.collect.concat(item) : [item];
+    return { collect, ...cssSelectorBuilder };
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    const item = { type: 'id', value: `#${value}` };
+    again(this.collect, 'id');
+    next(this.collect, 'class');
+    next(this.collect, 'pseudoElement');
+    const collect = this.collect ? this.collect.concat(item) : [item];
+    return { collect, ...cssSelectorBuilder };
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    const item = { type: 'class', value: `.${value}` };
+    next(this.collect, 'attr');
+    const collect = this.collect ? this.collect.concat(item) : [item];
+    return { collect, ...cssSelectorBuilder };
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    const item = { type: 'attr', value: `[${value}]` };
+    next(this.collect, 'pseudoClass');
+    const collect = this.collect ? this.collect.concat(item) : [item];
+    return { collect, ...cssSelectorBuilder };
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    const item = { type: 'pseudoClass', value: `:${value}` };
+    next(this.collect, 'pseudoElement');
+    const collect = this.collect ? this.collect.concat(item) : [item];
+    return { collect, ...cssSelectorBuilder };
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    const item = { type: 'pseudoElement', value: `::${value}` };
+    again(this.collect, 'pseudoElement');
+    const collect = this.collect ? this.collect.concat(item) : [item];
+    return { collect, ...cssSelectorBuilder };
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    const item = [...selector1.collect, { type: 'combinator', value: ` ${combinator} ` }, ...selector2.collect];
+    const collect = this.collect ? this.collect.concat(item) : item;
+    return { collect, ...cssSelectorBuilder };
+  },
+  stringify() {
+    return this.collect.map((item) => item.value).join('');
   },
 };
 
